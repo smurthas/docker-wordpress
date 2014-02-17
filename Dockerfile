@@ -13,19 +13,24 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y install php5-ldap
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install openssh-server 
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install sudo
 RUN easy_install supervisor
-ADD ./start.sh /start.sh
-ADD ./foreground.sh /etc/apache2/foreground.sh
-ADD ./supervisord.conf /etc/supervisord.conf
+
 RUN echo %sudo	ALL=NOPASSWD: ALL >> /etc/sudoers
 RUN rm -rf /var/www/
 RUN curl http://wordpress.org/latest.tar.gz > /tmp/wordpress.tar.gz
 RUN tar xvzf /tmp/wordpress.tar.gz
 RUN mv /wordpress /var/www/
 RUN chown -R www-data:www-data /var/www/
-RUN chmod 755 /start.sh
-RUN chmod 755 /etc/apache2/foreground.sh
 RUN mkdir /var/log/supervisor/
 RUN mkdir /var/run/sshd
+
+ADD ./start.sh /start.sh
+ADD ./setup_db.sh /setup_db.sh
+ADD ./foreground.sh /etc/apache2/foreground.sh
+ADD ./supervisord.conf /etc/supervisord.conf
+
+RUN chmod 755 /start.sh
+RUN chmod 755 /etc/apache2/foreground.sh
+
 EXPOSE 80
 EXPOSE 22
 CMD ["/bin/bash", "/start.sh"]
