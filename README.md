@@ -1,50 +1,41 @@
-(note: [Eugene Ware](http://github.com/eugeneware) has a Docker wordpress container build on nginx with some other goodies; you can check out his work [here](http://github.com/eugeneware/docker-wordpress-nginx).)
-
-
-(N.B. the way that Docker handles permissions may vary depending on your current Docker version. If you're getting errors like
-```
-dial unix /var/run/docker.sock: permission denied
-```
-when you run the below commands, simply use sudo. This is a [known issue](https://twitter.com/docker/status/366040073793323008).)
-
-
-This repo contains a recipe for making a [Docker](http://docker.io) container for Wordpress, using Linux, Apache and MySQL. 
-To build, make sure you have Docker [installed](http://www.docker.io/gettingstarted/), clone this repo somewhere, and then run:
-```
-docker build -rm -t <yourname>/wordpress .
-```
-
-Or, alternately, build DIRECTLY from the github repo like some sort of AMAZING FUTURO JULES-VERNESQUE SEA EXPLORER:
-```
-docker build -rm -t <yourname>/wordpress git://github.com/jbfink/docker-wordpress.git
-```
-
-Then run it! Woo! 
-```
-docker run -d -p 80 -p 22 <yourname>/wordpress
-```
-
-
-Check docker logs after running to see MySQL root password and Wordpress MySQL password, as so
+This repo contains a recipe for making a [Docker](http://docker.io) container
+for Wordpress using Apache. To build, make sure you have Docker
+[installed](http://www.docker.io/gettingstarted/), clone this repo somewhere,
+and then run:
 
 ```
-echo $(docker logs <container-id> | grep password)
+docker build -rm -t <your_image_name> .
 ```
 
-(note: you won't need the mysql root or the wordpress db password normally)
-
-Then find the external port assigned to your container:
-
-```
-docker port <container-id> 80 
-```
-
-Visit in a webrowser, then fill out the form. No need to mess with wp-config.php, it's been auto-generated with proper values. 
-
-
-Note that this image now has a user account (appropriately named "user") and passwordless sudo for that user account. The password is generated upon startup; check logs for "ssh user password", docker ps for the port assigned to 22, and something like this to get in: 
+You'll need to bring your own MySQL DB. An easy way to do this (at least to
+start) is to simply run another docker container:
 
 ```
-ssh -p <port> user@localhost
+# This docker image will create a DB and grant privledges. Nice.
+docker run -d \
+  -e MYSQL_DATABASE=<wordpress_mysql_db_name> \
+  -e MYSQL_USER=<wordpress_mysql_username> \
+  -e MYSQL_PASSWORD=<wordpress_mysql_password> \
+  -name wpmysql
+  orchardup/mysql
 ```
 
+Then, we can run our wordpress container, linking it to the existing `wpmysql`
+container:
+
+```
+sudo docker run -i -t -p 80:80 -e WP_DB=<wordpress_mysql_db_name> -e WP_USER=<wordpress_mysql_username> -e WP_PASS=<wordpress_mysql_password> -link wpmysql:mysql <your_image_name>
+```
+
+The `start.sh` script automatically uses the IP address provided by the docker
+link to `mysql`. If you want to specify your our IP address to a remotely hosted
+MySQL instance, you can simply run the command above, but instead of linking to
+a mysql container, just pass in another env var to the `docker run` command as
+```... -e MYSQL_HOST=<your_mysql_host> ...```
+
+If you don't want to attach this directly to port 80 (maybe you want to run it
+behind nginx and host multiple sites on one machine), just drop the `-p 80:80`
+(and also the `sudo`) and forward traffic to the IP address of the container,
+just use `-p 80` and docker will auto-bind it to a localhost port, or bind it
+to, say, 8080 using `-p 8080:80` and then bind your other site to a different
+port.
